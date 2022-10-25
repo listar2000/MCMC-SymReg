@@ -1,24 +1,8 @@
-# -*- coding: utf-8 -*-
-"""
-
-copyright Ying Jin, Weilin Fu, Jian Kang, Jiadong Guo, Jian Guo
-@20190804 added epsilon to avoid singular matrix
-@20190804 fix bug, change scale=np.max(XX) to scale = np.max(np.abs(XX))
-@20190804 added running time record
-@20190804 added stop condition in the algo's loop to prevent running for too long
-"""
-
 import numpy as np
-import pandas as pd
 from scipy.stats import invgamma
 from scipy.stats import norm
-import sklearn
-from sklearn.datasets import load_iris
 import copy
-#import pymc3 as pm
-import random
-#import data_generate_funcs as dg
-import time
+
 
 class Operator:
     def __init__(self, name, function, arity):

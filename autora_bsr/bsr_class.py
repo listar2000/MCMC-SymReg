@@ -1,44 +1,31 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Dec  3 19:40:29 2020
-
-@author: ying
-"""
-
-import os
-from bsr.funcs import Operator, Node
-from bsr.funcs import grow, genList, shrink, upgOd, allcal, display, getHeight, getNum, numLT, upDepth, Express, fStruc
-from bsr.funcs import ylogLike, newProp, Prop, auxProp
-
-
+from .funcs import Node, grow, genList, allcal, display, getNum, Express, newProp
 import numpy as np
 import pandas as pd
 from scipy.stats import invgamma
-from scipy.stats import norm
 from sklearn.base import BaseEstimator, RegressorMixin
-import sklearn
 import copy
-import matplotlib.pyplot as plt
-import random
 import time
 
-class BSR(BaseEstimator,RegressorMixin):
-    def __init__(self, treeNum=3, itrNum=5000, alpha1 = 0.4, alpha2=0.4,  
+
+class BSRRegressor(BaseEstimator, RegressorMixin):
+    """
+    Bayesian Symbolic Regression
+    """
+    def __init__(self, treeNum=3, itrNum=5000, alpha1=0.4, alpha2=0.4,
                  beta=-1, disp=False, val=100):
         self.treeNum = treeNum
         self.itrNum = itrNum
         self.alpha1 = alpha1
         self.alpha2 = alpha2
-        self.beta = beta #WGL
-        self.disp = disp #WGL
-        self.val = val #WGL
+        self.beta = beta
+        self.disp = disp
+        self.val = val
         
     def model(self, last_ind=1):
-        modd =[]
+        modd = []
         for i in  range(self.treeNum):
             modd.append(Express(self.roots_[-last_ind][i]))
-        return(modd)
+        return modd
             
     def complexity(self):
         compl = 0
@@ -48,9 +35,9 @@ class BSR(BaseEstimator,RegressorMixin):
             numm = getNum(root_node)
             cmpls.append(numm)
             compl = compl + numm
-        return(compl)
+        return compl
         
-    def predict(self, test_data, method = 'last', last_ind = 1):
+    def predict(self, test_data, method='last', last_ind=1):
         if isinstance(test_data, np.ndarray):
             test_data = pd.DataFrame(test_data)
         K = self.treeNum
@@ -65,7 +52,7 @@ class BSR(BaseEstimator,RegressorMixin):
             XX = np.concatenate((constant, XX), axis=1)
             Beta = self.betas_[-last_ind]
             toutput = np.matmul(XX, Beta)
-        return(toutput)
+        return toutput
     
     # =============================================================================
     # # MCMC algorithm
@@ -75,18 +62,15 @@ class BSR(BaseEstimator,RegressorMixin):
     # disp chooses whether to display intermediate results
         
     def fit(self, train_data, train_y):
-        
-        #WGL: moved these to fit and added underscore, 
-        #since they are not user parameters
+
         self.roots_ = []
         self.betas_ = []
         self.train_err_ = []
 
-        #WGL: train_data must be a dataframe
+        # train_data must be a dataframe
         if isinstance(train_data, np.ndarray):
             train_data = pd.DataFrame(train_data)
         trainERRS = []
-        #testERRS = []
         ROOTS = []
         BETAS = []
         MM = self.itrNum
@@ -95,10 +79,9 @@ class BSR(BaseEstimator,RegressorMixin):
         alpha2 = self.alpha2
         beta = self.beta
        
-        if self.disp: print('starting training...')
-        while len(trainERRS)<MM:
-            
-            
+        if self.disp:
+            print('starting training...')
+        while len(trainERRS) < MM:
             n_feature = train_data.shape[1]
             n_train = train_data.shape[0]
             '''
@@ -110,8 +93,7 @@ class BSR(BaseEstimator,RegressorMixin):
             Ops = ['inv', 'ln', 'neg', 'sin', 'cos', 'exp', 'square', 'cubic', '+', '*']
             Op_weights = [1.0/len(Ops)] * len(Ops)
             Op_type = [1, 1, 1, 1, 1, 1, 1, 1, 2, 2]
-            
-            
+
             # List of tree samples
             RootLists = []
             for i in np.arange(K):
@@ -121,8 +103,6 @@ class BSR(BaseEstimator,RegressorMixin):
             SigbList = []  # List of sigma_b, for each component tree
             
             sigma = invgamma.rvs(1)  # for output y
-            
-            #val = 100
             
             # Initialization
             for count in np.arange(K):
@@ -151,7 +131,6 @@ class BSR(BaseEstimator,RegressorMixin):
                 XX[:, count] = temp
             constant = np.ones((n_train,1))  # added a constant
             XX = np.concatenate((constant, XX), axis=1)
-            #scale = max(abs(np.max(XX)), abs(np.min(XX)))
             scale = np.max(np.abs(XX))
             XX = XX / scale
             epsilon = np.eye(XX.shape[1])*1e-6  # add to the matrix to prevent singular matrrix
@@ -170,7 +149,8 @@ class BSR(BaseEstimator,RegressorMixin):
             
             tic = time.time()
             
-            if self.disp: print('while total < ',self.val)
+            if self.disp:
+                print('while total < ', self.val)
             while total < self.val:
                 Roots = []  # list of current components
                 # for count in np.arange(K):
@@ -265,10 +245,8 @@ class BSR(BaseEstimator,RegressorMixin):
             
                 print("------")
                 print("mean rmse of last 5 accepts:", np.mean(errList[-6:-1]))
-                #print("mean rmse of last 5 tests:", np.mean(testList[-6:-1]))
             
             trainERRS.append(errList)
-            #testERRS.append(testList)
             ROOTS.append(Roots)
             BETAS.append(Beta)
         self.roots_ = ROOTS
@@ -284,15 +262,13 @@ class BSR(BaseEstimator,RegressorMixin):
 # MM is the number of iterations
 # =============================================================================
 
-def symreg(K,MM, train_data,test_data, train_y, test_y, disp=True):
+def symreg(K, MM, train_data, test_data, train_y, test_y, disp=True):
     
     trainERRS = []
     testERRS = []
     ROOTS = []
     
-    while len(trainERRS)<MM:
-        
-        
+    while len(trainERRS) < MM:
         n_feature = train_data.shape[1]
         n_train = train_data.shape[0]
         n_test = test_data.shape[0]
@@ -310,7 +286,6 @@ def symreg(K,MM, train_data,test_data, train_y, test_y, disp=True):
         Op_weights = [1.0/len(Ops)] * len(Ops)
         Op_type = [1, 1, 1, 1, 1, 1, 1, 1, 2, 2]
         n_op = len(Ops)
-        
         
         # List of tree samples
         RootLists = []
@@ -333,7 +308,6 @@ def symreg(K,MM, train_data,test_data, train_y, test_y, disp=True):
         
             # grow a tree from the Root node
             grow(Root, n_feature, Ops, Op_weights, Op_type, beta, sigma_a, sigma_b)
-            # Tree = genList(Root)
         
             # put the root into list
             RootLists[count].append(copy.deepcopy(Root))
@@ -349,10 +323,9 @@ def symreg(K,MM, train_data,test_data, train_y, test_y, disp=True):
             XX[:, count] = temp
         constant = np.ones((n_train,1))  # added a constant
         XX = np.concatenate((constant, XX), axis=1)
-        #scale = max(abs(np.max(XX)), abs(np.min(XX)))
         scale = np.max(np.abs(XX))
         XX = XX / scale
-        epsilon = np.eye(XX.shape[1])*1e-6  # add to the matrix to prevent singular matrrix
+        epsilon = np.eye(XX.shape[1])*1e-6  # add to the matrix to prevent singular matrix
         yy = np.array(train_y)
         yy.shape = (yy.shape[0], 1)
         Beta = np.linalg.inv(np.matmul(XX.transpose(), XX)+epsilon)
@@ -363,11 +336,8 @@ def symreg(K,MM, train_data,test_data, train_y, test_y, disp=True):
         total = 0
         accepted = 0
         errList = []
-        rootsList = []
         totList = []
         testList = []
-        #testList2 = []
-        dentList = []
         nodeCounts = []
         
         tic = time.time()
@@ -448,51 +418,28 @@ def symreg(K,MM, train_data,test_data, train_y, test_y, disp=True):
                         terror += (toutput[i, 0] - test_y[i]) * (toutput[i, 0] - test_y[i])
                     trmse = np.sqrt(terror / n_test)
                     testList.append(trmse)
-                    '''
-                    # compute test2 error
-                    XX = np.zeros((n_test, K))
-                    for countt in np.arange(K):
-                        temp = allcal(RootLists[countt][-1], test2_data)
-                        temp.shape = (temp.shape[0])
-                        XX[:, countt] = temp
-                    constant = np.ones((n_test, 1))
-                    XX = np.concatenate((constant, XX), axis=1)
-                    toutput2 = np.matmul(XX, Beta)
-        
-                    terror2 = 0
-                    for i in np.arange(0, n_test):
-                        terror2 += (toutput2[i, 0] - test2_y[i]) * (toutput2[i, 0] - test2_y[i])
-                    trmse2 = np.sqrt(terror2 / n_test)
-                    testList2.append(trmse2)
-                    '''
                     
                     if disp:
-
                         print("accept", accepted, "th after", total, "proposals and update ", count, "th component")
                         print("sigma:", round(sigma, 5), "error:", round(rmse, 5))  # ,"log.likelihood:",round(llh,5))
-                        # print("denoised rmse:",round(dtrmse,5))
             
                         display(genList(Root))
                         print("---------------")
                     totList.append(total)
                     total = 0
-                    
-                    
-        
-                # @fwl added condition to control running time
+
                 my_index = min(10,len(errList))
                 if len(errList)>100 and 1-np.min(errList[-my_index:])/np.mean(errList[-my_index:]) < 0.05:
                     # converged
                     switch_label = True
                     break
-                    # Roots[count] = oldRoot
             if switch_label:
                 break
             
         for i in np.arange(0,len(train_y)):
             print(output[i,0],train_y[i])
         
-        toc = time.time() # cauculate running time
+        toc = time.time() # calculate running time
         tictoc = toc-tic
         if disp:
             print("run time:{:.2f}s".format(tictoc))
@@ -505,4 +452,4 @@ def symreg(K,MM, train_data,test_data, train_y, test_y, disp=True):
         testERRS.append(testList)
         ROOTS.append(Roots)
         
-    return(ROOTS)
+    return ROOTS
